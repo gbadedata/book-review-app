@@ -1,52 +1,47 @@
-version: '2.1'
-
 services:
   mysql:
-    image: mysql:8.0
-    container_name: mysql_container
-    restart: always
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?set MYSQL_DATABASE in .env}
+      MYSQL_USER: ${MYSQL_USER:?set MYSQL_USER in .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysqladmin ping -h 127.0.0.1 -u \"$$MYSQL_USER\" --silent"]
       interval: 10s
       timeout: 5s
-      retries: 5
-    environment:
-      MYSQL_ROOT_PASSWORD: my-secret-pw
-      MYSQL_DATABASE: book_review_db
-      MYSQL_USER: pravin
-      MYSQL_PASSWORD: Demo12@Test23
-    ports:
-      - "3306:3306"
+      retries: 10
+      start_period: 30s
     volumes:
       - mysql_data:/var/lib/mysql
 
   backend:
     build: ./backend
-    container_name: backend_container
-    restart: always
+    restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
     environment:
       PORT: 3001
       DB_HOST: mysql
-      DB_NAME: book_review_db
-      DB_USER: pravin
-      DB_PASS: Demo12@Test23
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASS: ${MYSQL_PASSWORD}
       DB_DIALECT: mysql
-      JWT_SECRET: mysecretkey
-      ALLOWED_ORIGINS: http://<FRONTEND PUBLIC IP>:3000
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      ALLOWED_ORIGINS: http://${PUBLIC_IP:?set PUBLIC_IP in .env}:3000
     ports:
       - "3001:3001"
 
   frontend:
     build: ./frontend
-    container_name: frontend_container
-    restart: always
+    restart: unless-stopped
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_URL: http://<BACKEND PUBLIC IP>:3001
+      NEXT_PUBLIC_API_URL: http://${PUBLIC_IP:?set PUBLIC_IP in .env}:3001
+      NEXT_TELEMETRY_DISABLED: "1"
     ports:
       - "3000:3000"
 
