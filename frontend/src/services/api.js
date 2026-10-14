@@ -1,7 +1,8 @@
 import axios from "axios";
 
-// NEXT_PUBLIC_API_URL is the backend origin (e.g. http://host:3001); every API route lives under /api
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api`;
+// NEXT_PUBLIC_API_URL is the backend origin (e.g. http://host:3001); every API route lives under /api.
+// An empty value means "same origin": behind the Nginx reverse proxy on Kubernetes the browser calls /api directly.
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api`;
 
 // General function to handle errors
 const handleApiError = (error, defaultMessage) => {

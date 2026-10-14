@@ -1,0 +1,28 @@
+# Production image for Kubernetes (DMI Week 12, Assignment 10).
+# The browser reaches the API through the Nginx reverse proxy on the same origin, so the API base
+# is empty and every call goes to a relative /api path. NEXT_PUBLIC_* values are baked in at build
+# time, which is why this is a build argument rather than a runtime setting.
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+ARG NEXT_PUBLIC_API_URL=""
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
+    NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+# Application files stay owned by root (read-only for the app user); only the cache directory is writable
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
+RUN mkdir -p .next/cache && chown node:node .next/cache
+USER node
+EXPOSE 3000
+CMD ["node", "server.js"]
